@@ -9,6 +9,12 @@
 
 pros::MotorGroup left_mg({-1, -2, -3});    // forward ports 1 & 3, reversed port 2
 pros::MotorGroup right_mg({11, 14, 15});  // forward port 5, reversed ports 4 & 6
+pros::MotorGroup aux_mg({9, -10});  // port 9 forward, port 10 reversed
+
+// Pneumatic piston on ADI (3-wire) port A/1. false = solenoid de-energised =
+// piston contracted, which is how it comes up on boot.
+pros::adi::DigitalOut piston(1, false);
+bool piston_extended = false;
 
 /* ---------------------------------------------------------------------------
  * Autonomous routines
@@ -65,6 +71,7 @@ void initialize() {
     // --- what shows up on the DIAG page --------------------------------
     ui::track_motor_group("Drive L", {-1, -2, -3});
     ui::track_motor_group("Drive R", {11, 14, 15});
+    ui::track_flag("Piston", [] { return piston_extended; });
 
     // Uncomment and correct the ports as you add hardware:
     // ui::track_imu("IMU", 10);
@@ -105,6 +112,23 @@ void opcontrol() {
 
         left_mg.move(forward + turn);
         right_mg.move(forward - turn);
+
+        // Top-left button drives aux_mg forward, top-right drives it backward.
+        if (master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)) {
+            aux_mg.move(127);
+        } else if (master.get_digital(pros::E_CONTROLLER_DIGITAL_R1)) {
+            aux_mg.move(-127);
+        } else {
+            aux_mg.move(0);
+        }
+
+        // Button A toggles the piston: contracted -> expanded -> contracted.
+        // get_digital_new_press only fires on the rising edge, so holding A down
+        // does not flap the solenoid.
+        if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)) {
+            piston_extended = !piston_extended;
+            piston.set_value(piston_extended);
+        }
 
         pros::delay(20);
     }
