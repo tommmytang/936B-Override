@@ -417,7 +417,11 @@ void render_cb(lv_timer_t*) {
 
 /** One-shot: constructs the whole interface, then hands over to render_cb. */
 void build_cb(lv_timer_t* t) {
-    lv_obj_t* scr = lv_screen_active();
+    /* Our own screen, rather than clearing the active one: llemu keeps live
+     * pointers to the widgets it put there, and deleting them under its task
+     * is a use-after-free. Its screen simply stops being displayed. */
+    lv_obj_t* scr = lv_obj_create(nullptr);
+    lv_screen_load(scr);
     lv_obj_remove_style_all(scr);
     lv_obj_set_style_bg_color(scr, c(BG), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);

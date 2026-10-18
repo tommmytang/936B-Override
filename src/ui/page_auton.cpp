@@ -221,7 +221,9 @@ void build_auton(lv_obj_t* parent) {
     lv_obj_set_pos(g_list, 0, TAB_H + 6);
     lv_obj_add_flag(g_list, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(g_list, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(g_list, LV_SCROLLBAR_MODE_ACTIVE);
+    /* AUTO, not ACTIVE: show the bar whenever rows overflow, so a routine
+     * below the fold is visible as "there is more" rather than just missing. */
+    lv_obj_set_scrollbar_mode(g_list, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_set_flex_flow(g_list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(g_list, 5, LV_PART_MAIN);
     lv_obj_set_style_pad_right(g_list, 4, LV_PART_MAIN);
@@ -264,4 +266,7 @@ void retint_auton() {
 }
 
 }  // namespace internal
+
+bool auton_test_running() { return internal::g_test_running; }
+
 }  // namespace ui

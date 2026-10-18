@@ -92,6 +92,10 @@ void run_auton();
 /** Selects a routine from code (useful for testing from `opcontrol`). */
 void select_auton(Alliance alliance, const char* name);
 
+/** True while the AUTON page's TEST button is running a routine. That happens
+ *  during opcontrol, so driver control must keep off the motors meanwhile. */
+bool auton_test_running();
+
 /* =========================================================================
  * Telemetry -- what the dashboard and diagnostics pages display
  * ========================================================================= */
