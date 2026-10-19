@@ -44,7 +44,9 @@ namespace robot::config {
  *   6. LIFT_HOLD        PD hold. Confirm the arm neither sags nor buzzes --
  *                       this is the one that needs LIFT_KF tuned
  *   7. LIFT_LIMITS      confirm the arm stops at both ends of travel
- *   8. PRESETS          teach a couple of heights, confirm L2 returns to them
+ *   8. PRESETS          give preset recall a free button first (L2 is the aux
+ *                       toggle now), then teach a couple of heights and
+ *                       confirm that button returns to them
  *   9. AUTO_CLAMP       confirm the claw fires on a cone and not on air
  *  10. ANTITIP          tilt the robot by hand with the lift up
  *  11. STACK_MACRO      run it on blocks with an EMPTY claw first
@@ -83,6 +85,10 @@ static_assert(!ENABLE_LIFT_SCALING || ENABLE_LIFT_SENSING,
               "height you have not confirmed yet.");
 static_assert(!ENABLE_ANTITIP || ENABLE_LIFT_SENSING,
               "ENABLE_ANTITIP needs ENABLE_LIFT_SENSING: it only arms above a lift height.");
+static_assert(!ENABLE_PRESETS,
+              "ENABLE_PRESETS recalls a preset on L2, which now toggles the aux motors. "
+              "Move lift::go_to_preset() to a free button in src/robot/driver.cpp, then "
+              "delete this assert.");
 
 /* =========================================================================
  * PORTS
@@ -95,6 +101,12 @@ inline constexpr std::int8_t DRIVE_R1 = 6, DRIVE_R2 = 7, DRIVE_R3 = 8;
 /* DR4B lift. */
 inline constexpr std::int8_t LIFT_1 = 9, LIFT_2 = -10;
 
+/* Aux motor pair, toggled on/off with L2. Port 11 is reversed so the two spin
+ * in opposite directions. If the mechanism runs backwards, move the minus
+ * sign to the other port. */
+inline constexpr std::int8_t AUX_1 = -11, AUX_2 = 12;
+inline constexpr int AUX_POWER = 64;   // half speed; 127 = full
+
 /* Claw solenoid on an ADI (3-wire) port. 1 = 'A', 2 = 'B', ... 8 = 'H'. */
 inline constexpr std::uint8_t CLAW_ADI_PORT = 1;
 
@@ -103,26 +115,10 @@ inline constexpr std::uint8_t CLAW_ADI_PORT = 1;
  * solenoid off. Flip this if the claw ever opens when it should grab. */
 inline constexpr bool CLAW_EXTEND_TO_CLOSE = false;
 
-/* Sensors. All three are optional at runtime: if a port is empty the feature
- * that needs it turns itself off and the rest of the robot keeps working. */
-inline constexpr std::uint8_t IMU_PORT = 11;       // <<< SET THIS
+/* Sensors. Both are optional at runtime: if a port is empty the feature that
+ * needs it turns itself off and the rest of the robot keeps working. */
+inline constexpr std::uint8_t IMU_PORT = 4;
 inline constexpr std::uint8_t DISTANCE_PORT = 5;   // in the claw throat
-inline constexpr std::uint8_t LIFT_ROT_PORT = 13;  // <<< SET THIS -- on the DR4B pivot
-
-/* ------------------------------------------------------------------------
- * Which sensor measures lift height.
- *
- * false -> the lift motors' built-in encoders. Works today, zero extra parts,
- *          but the count desynchronises permanently the moment the gears skip
- *          (see AUX/LIFT_MAX_POWER below -- yours have skipped before).
- * true  -> a Rotation sensor on the arm pivot. Measures the arm itself, so
- *          gear skip and motor swaps cannot corrupt it.
- *
- * Presets are stored in ARM DEGREES either way, so flipping this flag does
- * not invalidate heights you have already tuned -- you only need the matching
- * ratio constant below to be right.
- * --------------------------------------------------------------------- */
-inline constexpr bool LIFT_USE_ROTATION = false;
 
 /* =========================================================================
  * CONTROLLER BINDINGS
@@ -134,7 +130,7 @@ inline constexpr bool LIFT_USE_ROTATION = false;
 //
 //  L1              raise lift (manual -- always cancels any macro)
 //  R1              lower lift (manual -- always cancels any macro)
-//  L2   (tap)      send lift to the preset for the current cone count
+//  L2   (tap)      toggle the aux motors (ports 11/12) on / off
 //  R2   (hold)     creep mode -- precision speed
 //
 //  A    (tap)      toggle claw open/closed
@@ -215,9 +211,10 @@ inline constexpr float ANGULAR_KP = 3, ANGULAR_KI = 0, ANGULAR_KD = 18;
 inline constexpr int LIFT_MAX_POWER = 102;          // 127 * 0.80
 inline constexpr int LIFT_SLEW = 10;                // max power change per 10 ms
 
-/* Gearing between the sensor and the arm. Height is tracked in ARM DEGREES. */
+/* Gearing between the lift motors and the arm. Height is tracked in ARM
+ * DEGREES from the motor encoders, so if the gears skip the reading is off
+ * until you re-zero (hold X with the arms on the hard stop). */
 inline constexpr double LIFT_MOTOR_DEG_PER_ARM_DEG = 7.0;  // <<< SET THIS (e.g. 84:12 = 7.0)
-inline constexpr double LIFT_ROT_DEG_PER_ARM_DEG = 1.0;    // 1.0 if sensor is on the pivot
 
 /* Hold / move gains, in arm degrees. */
 inline constexpr double LIFT_KP = 3.2;

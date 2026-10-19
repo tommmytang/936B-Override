@@ -46,6 +46,10 @@ std::atomic<bool> g_r2_held{false};
 std::uint32_t g_last_step_ms = 0;
 bool g_alert_fired[3] = {false, false, false};
 
+/* Aux motor toggle (L2). Reset to off at the start of every driver period so
+ * the pair never starts spinning on its own. */
+bool g_aux_on = false;
+
 std::uint32_t match_remaining_ms() {
     const std::uint32_t start = g_period_start.load();
     if (start == 0) return cfg::DRIVER_PERIOD_MS;
@@ -137,10 +141,10 @@ void init() {
     ui::track_motor_group("Drive L", {cfg::DRIVE_L1, cfg::DRIVE_L2, cfg::DRIVE_L3});
     ui::track_motor_group("Drive R", {cfg::DRIVE_R1, cfg::DRIVE_R2, cfg::DRIVE_R3});
     ui::track_motor_group("Lift", {cfg::LIFT_1, cfg::LIFT_2});
+    ui::track_motor_group("Aux", {cfg::AUX_1, cfg::AUX_2});
 
     if (imu_present) ui::track_imu("IMU", cfg::IMU_PORT);
     if (distance_present) ui::track_distance("Claw", cfg::DISTANCE_PORT);
-    if (rotation_present) ui::track_rotation("Lift rot", cfg::LIFT_ROT_PORT);
 
     // Tune CLAMP_SEAT_MM by watching this row with a cone in the jaw.
     ui::track_value("Lift", "deg", [] { return lift::height(); });
@@ -206,6 +210,7 @@ void driver_step(pros::Controller& master) {
     if (now - g_last_step_ms > 500) {
         g_period_start.store(now);
         for (bool& fired : g_alert_fired) fired = false;
+        g_aux_on = false;
         ui::log("Driver period started");
     }
     g_last_step_ms = now;
@@ -226,6 +231,13 @@ void driver_step(pros::Controller& master) {
     } else {
         lift::manual(0);
     }
+
+    /* --- aux motors: L2 toggles on / off ----------------------------------- */
+    if (master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_L2)) {
+        g_aux_on = !g_aux_on;
+        ui::log("Aux %s", g_aux_on ? "on" : "off");
+    }
+    aux_mg.move(g_aux_on ? cfg::AUX_POWER : 0);
 
     /* --- lift: presets and cone counter ------------------------------------ */
     if (cfg::ENABLE_PRESETS) {

@@ -2,9 +2,8 @@
  * @file src/robot/lift.cpp
  *
  * DR4B control: manual driving, position hold, cone-count presets and stall
- * protection. Heights are ARM DEGREES above the hard stop, whichever sensor
- * is measuring them, so switching between motor encoders and a Rotation
- * sensor does not invalidate a tuned preset table.
+ * protection. Heights are ARM DEGREES above the hard stop, measured by the
+ * lift motors' built-in encoders.
  *
  * Runs in its own 10 ms task. move_to() returns immediately.
  */
@@ -36,12 +35,8 @@ std::atomic<double> g_offset{0.0};  // raw units at the hard stop
 double g_presets[cfg::MAX_CONES] = {};
 int g_output = 0;                   // last power sent, for slew limiting
 
-/** Raw sensor reading converted to arm degrees, before the zero offset. */
+/** Raw encoder reading converted to arm degrees, before the zero offset. */
 double read_raw_arm_degrees() {
-    if (rotation_present) {
-        // Rotation sensor reports centidegrees.
-        return (lift_rotation.get_position() / 100.0) / cfg::LIFT_ROT_DEG_PER_ARM_DEG;
-    }
     return lift_mg.get_position() / cfg::LIFT_MOTOR_DEG_PER_ARM_DEG;
 }
 

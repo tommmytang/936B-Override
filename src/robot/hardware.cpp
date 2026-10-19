@@ -21,16 +21,15 @@ namespace cfg = robot::config;
 pros::MotorGroup left_mg({cfg::DRIVE_L1, cfg::DRIVE_L2, cfg::DRIVE_L3});
 pros::MotorGroup right_mg({cfg::DRIVE_R1, cfg::DRIVE_R2, cfg::DRIVE_R3});
 pros::MotorGroup lift_mg({cfg::LIFT_1, cfg::LIFT_2});
+pros::MotorGroup aux_mg({cfg::AUX_1, cfg::AUX_2});
 
 pros::adi::DigitalOut claw_solenoid(cfg::CLAW_ADI_PORT, false);
 
 pros::Imu imu(cfg::IMU_PORT);
 pros::Distance claw_distance(cfg::DISTANCE_PORT);
-pros::Rotation lift_rotation(cfg::LIFT_ROT_PORT);
 
 bool imu_present = false;
 bool distance_present = false;
-bool rotation_present = false;
 
 pros::Controller* g_controller = nullptr;
 
@@ -78,15 +77,11 @@ void hardware_init() {
     left_mg.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
     right_mg.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
 
-    distance_present = claw_distance.is_installed();
-    rotation_present = cfg::LIFT_USE_ROTATION && lift_rotation.is_installed();
-    imu_present = imu.is_installed();
+    // Coast the aux pair so it spins down freely when toggled off.
+    aux_mg.set_brake_mode_all(pros::E_MOTOR_BRAKE_COAST);
 
-    if (rotation_present) {
-        lift_rotation.set_data_rate(5);
-    } else if (cfg::LIFT_USE_ROTATION) {
-        ui::warn("Lift rotation sensor missing on port %d", cfg::LIFT_ROT_PORT);
-    }
+    distance_present = claw_distance.is_installed();
+    imu_present = imu.is_installed();
 
     if (distance_present) {
         ui::log("Auto-clamp: distance sensor on port %d", cfg::DISTANCE_PORT);

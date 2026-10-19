@@ -361,7 +361,7 @@ void opcontrol() {
     pros::Controller master(pros::E_CONTROLLER_MASTER);
 
     // Bindings live in include/robot/config.hpp. In short:
-    //   L1/R1 lift      R2 creep      L2 preset      A claw
+    //   L1/R1 lift      R2 creep      L2 aux on/off  A claw
     //   D-pad up/down cone count   right auto-clamp   left stow
     //   hold X re-zero lift        hold Y save this height as the preset
     bool testing = false;

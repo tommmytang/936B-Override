@@ -11,7 +11,6 @@
 #include "pros/distance.hpp"
 #include "pros/imu.hpp"
 #include "pros/motor_group.hpp"
-#include "pros/rotation.hpp"
 #include "robot/config.hpp"
 #include "robot/robot.hpp"
 
@@ -21,16 +20,15 @@ namespace robot::internal {
 extern pros::MotorGroup left_mg;
 extern pros::MotorGroup right_mg;
 extern pros::MotorGroup lift_mg;
+extern pros::MotorGroup aux_mg;
 extern pros::adi::DigitalOut claw_solenoid;
 extern pros::Imu imu;
 extern pros::Distance claw_distance;
-extern pros::Rotation lift_rotation;
 
 /* Probed once during init(), so the control loops never pay for a failed
  * device read every tick. */
 extern bool imu_present;
 extern bool distance_present;
-extern bool rotation_present;
 
 void hardware_init();
 void lift_init();
