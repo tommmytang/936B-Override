@@ -48,7 +48,7 @@ const char* level_icon(LogLevel l) {
 
 void on_clear_click(lv_event_t*) {
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         logs().clear();
     }
     ui::log("Console cleared");
@@ -102,7 +102,7 @@ void update_logs(const Snapshot&) {
     std::vector<LogLine> lines;
     std::uint32_t revision;
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         revision = log_revision();
         if (revision == g_seen_revision) return;  // nothing new; leave the DOM alone
         lines = logs();

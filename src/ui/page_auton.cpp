@@ -96,10 +96,10 @@ void paint_footer() {
 void on_row_click(lv_event_t* e) {
     const int index = static_cast<int>(reinterpret_cast<std::intptr_t>(lv_event_get_user_data(e)));
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         selected_index() = index;
-        storage_save();
     }
+    storage_save();
     paint_rows();
     paint_footer();
 }
@@ -155,7 +155,7 @@ void fill_list() {
 void on_tab_click(lv_event_t* e) {
     const int which = static_cast<int>(reinterpret_cast<std::intptr_t>(lv_event_get_user_data(e)));
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         selected_alliance() = static_cast<Alliance>(which);
         /* Jump to the first routine on the new alliance so the footer is never
          * showing a routine from the tab you just left. */
@@ -166,8 +166,8 @@ void on_tab_click(lv_event_t* e) {
                 break;
             }
         }
-        storage_save();
     }
+    storage_save();
     paint_tabs();
     fill_list();
     paint_footer();
@@ -183,7 +183,7 @@ void on_test_click(lv_event_t*) {
     if (g_test_running) return;
     Snapshot s;
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         s.competition_linked = snapshot().competition_linked;
     }
     if (s.competition_linked) {
@@ -221,7 +221,9 @@ void build_auton(lv_obj_t* parent) {
     lv_obj_set_pos(g_list, 0, TAB_H + 6);
     lv_obj_add_flag(g_list, LV_OBJ_FLAG_SCROLLABLE);
     lv_obj_set_scroll_dir(g_list, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(g_list, LV_SCROLLBAR_MODE_ACTIVE);
+    /* AUTO, not ACTIVE: show the bar whenever rows overflow, so a routine
+     * below the fold is visible as "there is more" rather than just missing. */
+    lv_obj_set_scrollbar_mode(g_list, LV_SCROLLBAR_MODE_AUTO);
     lv_obj_set_flex_flow(g_list, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_style_pad_row(g_list, 5, LV_PART_MAIN);
     lv_obj_set_style_pad_right(g_list, 4, LV_PART_MAIN);
@@ -264,4 +266,7 @@ void retint_auton() {
 }
 
 }  // namespace internal
+
+bool auton_test_running() { return internal::g_test_running; }
+
 }  // namespace ui
