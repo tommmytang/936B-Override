@@ -1,27 +1,14 @@
 /**
- * @file src/ui/internal.hpp
- *
- * Shared plumbing between the UI's translation units. Nothing here is part of
- * the public API -- see include/ui/ui.hpp for that.
- *
- * THREADING MODEL
- * ---------------
- * Two actors touch this state:
- *
- *   1. A PROS task ("ui-sample") polls the robot every SAMPLE_MS and writes
- *      into `snapshot()`, holding `data_lock()`.
- *   2. An LVGL timer, which runs inside PROS's display daemon, copies the
- *      snapshot and pushes it into widgets.
- *
- * That split matters: LVGL is not thread safe, so *every* LVGL call in this
- * UI happens on the display daemon. Device reads, which can block on the VDML
- * mutex, happen on the sampler task so they can never stall rendering.
+ * UI internals. Threading:
+ *   - "ui-sample" task reads devices into snapshot() every SAMPLE_MS.
+ *   - LVGL timers on PROS's display daemon copy the snapshot into widgets.
+ * LVGL is not thread safe and the daemon runs it unlocked, so every LVGL call
+ * must happen in an lv_timer/event callback (see start() for the one exception).
  */
 #pragma once
 
 #include <cstdint>
 #include <functional>
-#include <mutex>
 #include <string>
 #include <vector>
 
@@ -41,7 +28,7 @@ inline constexpr std::size_t TRAIL_POINTS = 40;  //< field map breadcrumbs
 /* ======================================================= registered things */
 
 enum class DeviceKind : std::uint8_t {
-    Motor, MotorGroup, Imu, Rotation, Distance, Optical, Value, Flag
+    MotorGroup, Imu, Distance, Value, Flag
 };
 
 /** Something the user asked us to watch. Filled in before `start()`. */
@@ -93,7 +80,6 @@ struct Snapshot {
 
     Pose pose;
     bool pose_valid = false;
-    bool pose_demo = false;  //< the position shown is synthetic, not measured
 
     std::vector<DeviceSample> devices;
 
@@ -116,8 +102,30 @@ struct LogLine {
 
 /* ================================================================== state */
 
-/** Guards everything below. Held briefly -- never call LVGL while holding it. */
-pros::Mutex& data_lock();
+}  // namespace internal
+}  // namespace ui
+
+extern "C" {
+void rtos_suspend_all(void);    // PROS kernel; not in the public headers
+std::int32_t rtos_resume_all(void);
+}
+
+namespace ui {
+namespace internal {
+
+/**
+ * Guards everything below by suspending the scheduler. Not a mutex: PROS
+ * deletes the autonomous/opcontrol task on every mode change, and a task
+ * deleted while holding a FreeRTOS mutex leaves it locked forever with a
+ * dangling owner (heap corruption via priority inheritance). A task can't be
+ * deleted inside this. Keep the body short and never block or touch the SD card.
+ */
+struct Guard {
+    Guard() { rtos_suspend_all(); }
+    ~Guard() { rtos_resume_all(); }
+    Guard(const Guard&) = delete;
+    Guard& operator=(const Guard&) = delete;
+};
 
 std::vector<DeviceDef>& devices();
 std::vector<AutonDef>& autons();
@@ -129,8 +137,6 @@ std::uint32_t log_revision();
 
 std::function<Pose()>& pose_source();
 std::function<void()>& reset_pose_action();
-std::string& team_name();
-bool demo_mode();
 
 Alliance& selected_alliance();
 int& selected_index();  //< index into autons(), or -1

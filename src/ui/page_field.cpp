@@ -66,7 +66,7 @@ void add_grid_line(lv_obj_t* parent, std::int32_t x, std::int32_t y, std::int32_
 void on_reset_click(lv_event_t*) {
     std::function<void()> action;
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         action = reset_pose_action();
     }
     g_trail_used = 0;
@@ -222,10 +222,7 @@ void update_field(const Snapshot& s) {
 
     const bool off_field =
         std::fabs(s.pose.x) > FIELD_IN / 2 || std::fabs(s.pose.y) > FIELD_IN / 2;
-    if (s.pose_demo) {
-        lv_label_set_text(g_status, LV_SYMBOL_EYE_OPEN " Demo path. No odometry\nwired up yet.");
-        lv_obj_set_style_text_color(g_status, c(ACCENT_HI), LV_PART_MAIN);
-    } else if (off_field) {
+    if (off_field) {
         lv_label_set_text(g_status, LV_SYMBOL_WARNING " Pose is outside the field");
         lv_obj_set_style_text_color(g_status, c(WARN), LV_PART_MAIN);
     } else {

@@ -96,10 +96,10 @@ void paint_footer() {
 void on_row_click(lv_event_t* e) {
     const int index = static_cast<int>(reinterpret_cast<std::intptr_t>(lv_event_get_user_data(e)));
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         selected_index() = index;
-        storage_save();
     }
+    storage_save();
     paint_rows();
     paint_footer();
 }
@@ -155,7 +155,7 @@ void fill_list() {
 void on_tab_click(lv_event_t* e) {
     const int which = static_cast<int>(reinterpret_cast<std::intptr_t>(lv_event_get_user_data(e)));
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         selected_alliance() = static_cast<Alliance>(which);
         /* Jump to the first routine on the new alliance so the footer is never
          * showing a routine from the tab you just left. */
@@ -166,8 +166,8 @@ void on_tab_click(lv_event_t* e) {
                 break;
             }
         }
-        storage_save();
     }
+    storage_save();
     paint_tabs();
     fill_list();
     paint_footer();
@@ -183,7 +183,7 @@ void on_test_click(lv_event_t*) {
     if (g_test_running) return;
     Snapshot s;
     {
-        std::lock_guard<pros::Mutex> guard(data_lock());
+        Guard guard;
         s.competition_linked = snapshot().competition_linked;
     }
     if (s.competition_linked) {

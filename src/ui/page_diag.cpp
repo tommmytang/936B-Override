@@ -51,7 +51,7 @@ std::string describe_ports(const DeviceDef& d) {
 }
 
 bool is_motor(const DeviceDef& d) {
-    return d.kind == DeviceKind::Motor || d.kind == DeviceKind::MotorGroup;
+    return d.kind == DeviceKind::MotorGroup;
 }
 
 }  // namespace
